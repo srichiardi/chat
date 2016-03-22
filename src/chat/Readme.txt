@@ -12,3 +12,4 @@ To use this code:
 6. open a new window and go to the src directory
 7. java random.RandomNumberClient 1 100 // or whatever parameters you like
 
+small comment
