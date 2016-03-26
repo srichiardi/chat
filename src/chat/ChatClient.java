@@ -1,6 +1,9 @@
 package chat;
 
+import java.net.MalformedURLException;
 import java.rmi.Naming;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -9,16 +12,26 @@ public class ChatClient {
 	
 	private String clientName;
 	private String clientUri;
+	private RemoteList clientsList;
+	private Message msgServer;
 	
-	public ChatClient(String name)
+	public ChatClient(String name) throws MalformedURLException, RemoteException, NotBoundException
 	{
 		this.clientName = name;
 		this.clientUri = "rmi://localhost/" + name;
+		
+		this.clientsList = (RemoteList)Naming.lookup("rmi://localhost/listserver");
+		this.clientsList.setClient(name, this.clientUri);
+		
+		// setting up the client's internal chat server
+		this.msgServer = new MessageImpl();
+    	Naming.rebind(this.clientUri, this.msgServer);
 	}
 	
-	public void printClients(Map<String, String> clientsList)
+	public void printClients() throws RemoteException
 	{
-		Iterator<Entry<String, String>> it = clientsList.entrySet().iterator();
+		Map<String, String> cList = this.clientsList.getList(this.clientName);
+		Iterator<Entry<String, String>> it = cList.entrySet().iterator();
 	    while (it.hasNext())
 	    {
 	        Map.Entry<String, String> pair = (Map.Entry<String, String>)it.next();
@@ -27,14 +40,18 @@ public class ChatClient {
 	    }
 	}
 	
-	public static void main(String[] args) throws Exception{
-		RemoteList clientsList = (RemoteList)Naming.lookup("rmi://localhost/listserver");
-		ChatClient cOne = new ChatClient("client_one");
-		clientsList.setClient("client_one", "client_one_uri");
-		ChatClient cTwo = new ChatClient("client_two");
-		clientsList.setClient("client_two", "client_two_url");
-		Map<String, String> cList = clientsList.getList("client_two");
-		cOne.printClients(cList);
+	public void sendMessage(String recipient, String msgText) throws RemoteException, MalformedURLException, NotBoundException
+	{
+		Map<String, String> cList = this.clientsList.getList(this.clientName);
+		String rcpntUri = cList.get(recipient);
+		Message rcpntSrv = (Message)Naming.lookup(rcpntUri);
+		rcpntSrv.sendFrom(this.clientName, msgText);
 	}
-
+	
+	
+	public static void main(String[] args) throws Exception{
+		ChatClient cOne = new ChatClient("client_one");
+		ChatClient cTwo = new ChatClient("client_two");
+		cOne.sendMessage("client_two", "Hello");
+	}
 }

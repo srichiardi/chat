@@ -2,3 +2,7 @@
 /ChatServer.class
 /RemoteList.class
 /RemoteListImpl.class
+/Message.class
+/ClientUI.class
+/ClientUI$1.class
+/MessageImpl.class
