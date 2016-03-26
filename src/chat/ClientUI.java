@@ -4,22 +4,41 @@ import java.awt.Container;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.FocusEvent;
-import java.awt.Dimension;
-import java.awt.event.FocusListener;
-
+import java.net.MalformedURLException;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
 import javax.swing.*;
+
+import java.net.MalformedURLException;
+import java.rmi.Naming;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public class ClientUI
 {
-	public ClientUI()
+	private String clientName;
+	private String clientUri;
+	private RemoteList clientsList;
+	private Message msgServer;
+	
+	public ClientUI(String clientName) throws MalformedURLException, RemoteException, NotBoundException
 	{
-		/** ================ */
-		/** :::ELEMENTS::::: */
-		/** ================ */
-		final JFrame frame = new JFrame("Chat Client");
+		this.clientName = clientName;
+		this.clientUri = "rmi://localhost/" + clientName;
+		
+		this.clientsList = (RemoteList)Naming.lookup("rmi://localhost/listserver");
+		this.clientsList.setClient(clientName, this.clientUri);
+		
+		
+		/** ==================== */
+		/** :::GUI ELEMENTS::::: */
+		/** ==================== */
+		final JFrame frame = new JFrame("Chat Client: " + clientName);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setSize(800,500);
+		frame.setSize(500,500);
 		frame.setLocation(250, 250);
 		Container content = frame.getContentPane();
 		
@@ -32,7 +51,7 @@ public class ClientUI
 		final JList<String> lstClients = new JList<String>(lClients);
 		JScrollPane clntsListScroll = new JScrollPane(lstClients);
 		
-		final JButton fakeBtn = new JButton("FAKE");
+		final JButton refreshBtn = new JButton("REFRESH LIST");
 		
 		
 		JPanel panel2 = new JPanel();
@@ -52,6 +71,10 @@ public class ClientUI
 		rcvText.setMargin(new Insets(10, 10, 10, 10));
 		rcvText.setLineWrap(true);
 		JScrollPane rcvAreaScroll = new JScrollPane(rcvText);
+		
+		// setting up the client's internal chat server
+		this.msgServer = new TextAreaImpl(rcvText);
+		Naming.rebind(this.clientUri, this.msgServer);
 		
 		/** =============== */
 		/** :::LAYOUTS::::: */
@@ -84,12 +107,14 @@ public class ClientUI
 			panel1Layout.createParallelGroup(GroupLayout.Alignment.LEADING)
 			.addComponent(lblContacts)
 			.addComponent(clntsListScroll)
+			.addComponent(refreshBtn)
 		);
 		
 		panel1Layout.setVerticalGroup(
 			panel1Layout.createSequentialGroup()
 			.addComponent(lblContacts)
 			.addComponent(clntsListScroll)
+			.addComponent(refreshBtn)
 		);
 		
 		// Layout Panel 2: send and receive text fields
@@ -122,6 +147,33 @@ public class ClientUI
 		/** :::EVENTS:::::: */
 		/** =============== */
 		
+		sendBtn.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent ae){
+				String recipient = lstClients.getSelectedValue();
+				String msgText = sendText.getText() + "\n\n";
+				try
+				{
+					sendMessage(recipient, msgText);
+				} catch (RemoteException e) {
+					e.printStackTrace();
+				} catch (MalformedURLException e) {
+					e.printStackTrace();
+				} catch (NotBoundException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		refreshBtn.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent ae){
+				try {
+					populateJList(lClients);
+				} catch (RemoteException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
 		closeBtn.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent ae){
 				frame.dispose();
@@ -130,10 +182,35 @@ public class ClientUI
 		
 		frame.setVisible(true);
 	}
-
-	public static void main(String[] args)
+	
+	// automatically adds clients name to the contacts list at init
+	private void populateJList(DefaultListModel<String> cListModel) throws RemoteException
 	{
-		new ClientUI();
+		Map<String, String> cList = this.clientsList.getList();
+		Iterator<Entry<String, String>> it = cList.entrySet().iterator();
+		cListModel.clear();
+	    while (it.hasNext())
+	    {
+	        Map.Entry<String, String> pair = (Map.Entry<String, String>)it.next();
+	        if (!pair.getKey().equals(this.clientName))
+	        {
+	        	cListModel.addElement(pair.getKey());
+	        }
+	        it.remove(); // avoids a ConcurrentModificationException
+	    }
 	}
-
+	
+	private void sendMessage(String recipient, String msgText) throws RemoteException, MalformedURLException, NotBoundException
+	{
+		Map<String, String> cList = this.clientsList.getList();
+		String rcpntUri = cList.get(recipient);
+		Message rcpntSrv = (Message)Naming.lookup(rcpntUri);
+		rcpntSrv.sendFrom(this.clientName, msgText);
+	}
+	
+/*	public static void main(String[] args) throws Exception
+	{
+		new ClientUI(args[0]);
+	}*/
+	
 }

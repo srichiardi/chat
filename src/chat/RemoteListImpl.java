@@ -15,15 +15,9 @@ public class RemoteListImpl extends UnicastRemoteObject implements RemoteList
 	public RemoteListImpl () throws RemoteException {}
 
 	// getList function, checks if the client requesting is in the list first
-	public Map<String, String> getList(String clientName) throws RemoteException
+	public Map<String, String> getList() throws RemoteException
 	{
-		Map < String , String > tempRegistry = this.clientsRegistry;
-		
-		if (tempRegistry.containsKey(clientName))
-		{
-			tempRegistry.remove(clientName);
-		}
-		return tempRegistry;
+		return this.clientsRegistry;
 	}
 
 	// setClient function, adds a client to the registry

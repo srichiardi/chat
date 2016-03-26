@@ -30,7 +30,7 @@ public class ChatClient {
 	
 	public void printClients() throws RemoteException
 	{
-		Map<String, String> cList = this.clientsList.getList(this.clientName);
+		Map<String, String> cList = this.clientsList.getList();
 		Iterator<Entry<String, String>> it = cList.entrySet().iterator();
 	    while (it.hasNext())
 	    {
@@ -42,16 +42,9 @@ public class ChatClient {
 	
 	public void sendMessage(String recipient, String msgText) throws RemoteException, MalformedURLException, NotBoundException
 	{
-		Map<String, String> cList = this.clientsList.getList(this.clientName);
+		Map<String, String> cList = this.clientsList.getList();
 		String rcpntUri = cList.get(recipient);
 		Message rcpntSrv = (Message)Naming.lookup(rcpntUri);
 		rcpntSrv.sendFrom(this.clientName, msgText);
-	}
-	
-	
-	public static void main(String[] args) throws Exception{
-		ChatClient cOne = new ChatClient("client_one");
-		ChatClient cTwo = new ChatClient("client_two");
-		cOne.sendMessage("client_two", "Hello");
 	}
 }

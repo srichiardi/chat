@@ -6,7 +6,7 @@ import java.util.Map;
 
 public interface RemoteList extends Remote
 {
-	public Map<String, String> getList(String clientName) throws RemoteException;
+	public Map<String, String> getList() throws RemoteException;
 	
 	public void setClient(String clientName, String clientURI) throws RemoteException;
 	
