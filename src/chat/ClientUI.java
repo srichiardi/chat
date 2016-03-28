@@ -209,7 +209,7 @@ public class ClientUI
 		Map<String, String> cList = this.clientsList.getList();
 		cListModel.clear();
 		for(String key : cList.keySet())
-	    {
+		{
 	        if (!key.equals(this.clientName))
 	        {
 	        	cListModel.addElement(key);
