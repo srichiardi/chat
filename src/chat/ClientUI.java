@@ -8,6 +8,8 @@ import java.net.MalformedURLException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import java.net.MalformedURLException;
 import java.rmi.Naming;
@@ -16,6 +18,7 @@ import java.rmi.RemoteException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 
 public class ClientUI
@@ -175,6 +178,22 @@ public class ClientUI
 			}
 		});
 		
+		rcvText.getDocument().addDocumentListener(new DocumentListener(){
+			public void insertUpdate(DocumentEvent e) {
+				
+			}
+
+			@Override
+			public void changedUpdate(DocumentEvent e) {
+				
+			}
+
+			@Override
+			public void removeUpdate(DocumentEvent e) {
+				
+			}
+		});
+		
 		closeBtn.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent ae){
 				frame.dispose();
@@ -188,16 +207,13 @@ public class ClientUI
 	private void populateJList(DefaultListModel<String> cListModel) throws RemoteException
 	{
 		Map<String, String> cList = this.clientsList.getList();
-		Iterator<Entry<String, String>> it = cList.entrySet().iterator();
 		cListModel.clear();
-	    while (it.hasNext())
+		for(String key : cList.keySet())
 	    {
-	        Map.Entry<String, String> pair = (Map.Entry<String, String>)it.next();
-	        if (!pair.getKey().equals(this.clientName))
+	        if (!key.equals(this.clientName))
 	        {
-	        	cListModel.addElement(pair.getKey());
+	        	cListModel.addElement(key);
 	        }
-	        it.remove(); // avoids a ConcurrentModificationException
 	    }
 	}
 	
@@ -207,6 +223,17 @@ public class ClientUI
 		String rcpntUri = cList.get(recipient);
 		Message rcpntSrv = (Message)Naming.lookup(rcpntUri);
 		rcpntSrv.sendFrom(this.clientName, msgText);
+	}
+	
+	private void broadcastMessage(String msgText) throws RemoteException, MalformedURLException, NotBoundException
+	{
+		Map<String, String> cList = this.clientsList.getList();
+		for(String key : cList.keySet())
+		{
+			String rcpntUri = cList.get(key);
+			Message rcpntSrv = (Message)Naming.lookup(rcpntUri);
+			rcpntSrv.sendFrom(this.clientName, msgText);
+		}
 	}
 	
 /*	public static void main(String[] args) throws Exception
