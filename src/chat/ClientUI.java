@@ -210,11 +210,11 @@ public class ClientUI
 		cListModel.clear();
 		for(String key : cList.keySet())
 		{
-	        if (!key.equals(this.clientName))
-	        {
-	        	cListModel.addElement(key);
-	        }
-	    }
+			if (!key.equals(this.clientName))
+			{
+				cListModel.addElement(key);
+			}
+		}
 	}
 	
 	private void sendMessage(String recipient, String msgText) throws RemoteException, MalformedURLException, NotBoundException
