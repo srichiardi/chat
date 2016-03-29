@@ -10,6 +10,7 @@ import java.rmi.RemoteException;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.Document;
 
 import java.net.MalformedURLException;
 import java.rmi.Naming;
@@ -180,22 +181,28 @@ public class ClientUI
 		
 		rcvText.getDocument().addDocumentListener(new DocumentListener(){
 			public void insertUpdate(DocumentEvent e) {
-				
+				messageReceived(e);
 			}
 
 			@Override
 			public void changedUpdate(DocumentEvent e) {
-				
+				messageReceived(e);
 			}
 
 			@Override
 			public void removeUpdate(DocumentEvent e) {
-				
+				messageReceived(e);
 			}
 		});
 		
 		closeBtn.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent ae){
+				try {
+					clientsList.removeClient(clientName);
+					Naming.unbind(clientUri);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 				frame.dispose();
 			}
 		});
@@ -234,6 +241,12 @@ public class ClientUI
 			Message rcpntSrv = (Message)Naming.lookup(rcpntUri);
 			rcpntSrv.sendFrom(this.clientName, msgText);
 		}
+	}
+	
+	private void messageReceived(DocumentEvent e)
+	{
+		Document doc = (Document)e.getDocument();
+		// do something with the text field
 	}
 	
 /*	public static void main(String[] args) throws Exception
