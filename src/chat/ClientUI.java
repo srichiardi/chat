@@ -159,11 +159,7 @@ public class ClientUI
 				try
 				{
 					sendMessage(recipient, msgText);
-				} catch (RemoteException e) {
-					e.printStackTrace();
-				} catch (MalformedURLException e) {
-					e.printStackTrace();
-				} catch (NotBoundException e) {
+				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
@@ -181,28 +177,23 @@ public class ClientUI
 		
 		rcvText.getDocument().addDocumentListener(new DocumentListener(){
 			public void insertUpdate(DocumentEvent e) {
-				messageReceived(e);
+				messageReceived();
 			}
 
 			@Override
 			public void changedUpdate(DocumentEvent e) {
-				messageReceived(e);
+				messageReceived();
 			}
 
 			@Override
 			public void removeUpdate(DocumentEvent e) {
-				messageReceived(e);
+				messageReceived();
 			}
 		});
 		
 		closeBtn.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent ae){
-				try {
-					clientsList.removeClient(clientName);
-					Naming.unbind(clientUri);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+				unsubscribe();
 				frame.dispose();
 			}
 		});
@@ -243,10 +234,20 @@ public class ClientUI
 		}
 	}
 	
-	private void messageReceived(DocumentEvent e)
+	private void messageReceived()
 	{
-		Document doc = (Document)e.getDocument();
 		// do something with the text field
+		System.out.println("message received!");
+	}
+	
+	private void unsubscribe()
+	{
+		try {
+			this.clientsList.removeClient(this.clientName);
+			Naming.unbind(this.clientUri);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 /*	public static void main(String[] args) throws Exception
