@@ -154,13 +154,21 @@ public class ClientUI
 		
 		sendBtn.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent ae){
-				String recipient = lstClients.getSelectedValue();
 				String msgText = sendText.getText() + "\n\n";
-				try
+				if (lstClients.isSelectionEmpty())
 				{
-					sendMessage(recipient, msgText);
-				} catch (Exception e) {
-					e.printStackTrace();
+					try {
+						broadcastMessage(msgText);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				} else {
+					String recipient = lstClients.getSelectedValue();
+					try {
+						sendMessage(recipient, msgText);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
 			}
 		});
