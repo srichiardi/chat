@@ -53,6 +53,7 @@ public class ClientUI
 		
 		final JList<String> lstClients = new JList<String>(lClients);
 		JScrollPane clntsListScroll = new JScrollPane(lstClients);
+		clntsListScroll.setSize(150, 400);
 		
 		final JButton refreshBtn = new JButton("REFRESH LIST");
 		
@@ -79,9 +80,9 @@ public class ClientUI
 		this.msgServer = new TextAreaImpl(rcvText);
 		Naming.rebind(this.clientUri, this.msgServer);
 		
-		/** =============== */
-		/** :::LAYOUTS::::: */
-		/** =============== */
+		/** =================== */
+		/** :::GUI LAYOUTS::::: */
+		/** =================== */
 		// Layout Frame
 		GroupLayout frameLayout = new GroupLayout(content);
 		content.setLayout( frameLayout );
@@ -146,13 +147,14 @@ public class ClientUI
 			.addComponent(closeBtn)
 		);
 		
-		/** =============== */
-		/** :::EVENTS:::::: */
-		/** =============== */
+		/** ============================= */
+		/** :::LISTENERS AND EVENTS:::::: */
+		/** ============================= */
 		
 		sendBtn.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent ae){
 				String msgText = sendText.getText() + "\n\n";
+				// when no recipient is selected
 				if (lstClients.isSelectionEmpty())
 				{
 					try {
@@ -161,6 +163,7 @@ public class ClientUI
 						e.printStackTrace();
 					}
 				} else {
+					// when one recipient is selected
 					String recipient = lstClients.getSelectedValue();
 					try {
 						sendMessage(recipient, msgText);
@@ -168,6 +171,8 @@ public class ClientUI
 						e.printStackTrace();
 					}
 				}
+				// clearing text from send text area after message is sent 
+				sendText.setText(null);
 			}
 		});
 		
@@ -181,6 +186,8 @@ public class ClientUI
 			}
 		});
 		
+		// the listener detects when the received text area is modified
+		// interpreting it as an indicator of message being received
 		rcvText.getDocument().addDocumentListener(new DocumentListener(){
 			public void insertUpdate(DocumentEvent e) {
 				messageReceived();
@@ -204,6 +211,9 @@ public class ClientUI
 			}
 		});
 		
+		/** ===================== */
+		/** :::GUI LAUNCHER:::::: */
+		/** ===================== */		
 		frame.setVisible(true);
 	}
 	
@@ -240,12 +250,14 @@ public class ClientUI
 		}
 	}
 	
+	// method to re-broadcast a message received 
 	private void messageReceived()
 	{
 		// do something with the text field
 		System.out.println("message received!");
 	}
 	
+	// method that fires when the client shuts down, removes itself from the registry
 	private void unsubscribe()
 	{
 		try {
