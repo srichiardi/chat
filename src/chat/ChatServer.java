@@ -18,14 +18,29 @@ public class ChatServer
     	Naming.rebind("rmi://localhost/listserver", this.clientsRegistry);
 	}
 	
-	public Map<String, String> getMap() throws RemoteException
+	private Map<String, String> getMap() throws RemoteException
 	{
 		return this.clientsRegistry.getList();
 	}
 	
-	public void dropClient(String clientName) throws RemoteException
+	private void dropClient(String clientName) throws RemoteException
 	{
 		this.clientsRegistry.removeClient(clientName);
+	}
+	
+	public void checkConnectedClients() throws RemoteException
+	{
+		Set<String> clientSet = getMap().keySet();
+		for (String key : clientSet)
+		{
+			try {
+				String rcpntUri = getMap().get(key);
+				Message rcpntSrv = (Message)Naming.lookup(rcpntUri);
+			} catch (Exception e) {
+				// assuming the exception is caused by the client being off-line
+				dropClient(key);
+			}
+		}
 	}
 	
     public static void main(String args[]) throws Exception
@@ -33,17 +48,7 @@ public class ChatServer
     	ChatServer srv = new ChatServer();
     	for(;;)
     	{
-    		Set<String> clientSet = srv.getMap().keySet();
-    		for (String key : clientSet)
-    		{
-    			try {
-    				String rcpntUri = srv.getMap().get(key);
-    				Message rcpntSrv = (Message)Naming.lookup(rcpntUri);
-    			} catch (RemoteException e) {
-    				// assuming the exception is caused by the client offline
-    				srv.dropClient(key);
-    			}
-    		}
+    		srv.checkConnectedClients();
     		// pause the scanning process for 10 seconds
 			Thread.sleep(10000);
     	}

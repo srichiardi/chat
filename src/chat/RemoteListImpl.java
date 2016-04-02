@@ -19,6 +19,11 @@ public class RemoteListImpl extends UnicastRemoteObject implements RemoteList
 	{
 		return this.clientsRegistry;
 	}
+	
+	public String getClientAddress(String clientName) throws RemoteException
+	{
+		return this.clientsRegistry.get(clientName);
+	}
 
 	// setClient function, adds a client to the registry
 	public void setClient(String clientName, String clientURI) throws RemoteException

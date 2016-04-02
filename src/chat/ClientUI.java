@@ -16,8 +16,12 @@ import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
 
 public class ClientUI
@@ -26,6 +30,8 @@ public class ClientUI
 	private String clientUri;
 	private RemoteList clientsList;
 	private Message msgServer;
+	private Set <String> rcvdMessages; // stores all msgIDs already received
+	private final JTextArea rcvText = new JTextArea();
 	
 	public ClientUI(String clientName) throws MalformedURLException, RemoteException, NotBoundException
 	{
@@ -34,6 +40,7 @@ public class ClientUI
 		
 		this.clientsList = (RemoteList)Naming.lookup("rmi://localhost/listserver");
 		this.clientsList.setClient(clientName, this.clientUri);
+		this.rcvdMessages = new HashSet<String>();
 		
 		
 		/** ==================== */
@@ -41,11 +48,12 @@ public class ClientUI
 		/** ==================== */
 		final JFrame frame = new JFrame("Chat Client: " + clientName);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setSize(500,500);
+		frame.setSize(600,500);
 		frame.setLocation(250, 250);
 		Container content = frame.getContentPane();
 		
 		JPanel panel1 = new JPanel();
+		panel1.setSize(150, 400);
 		content.add(panel1);
 		final JLabel lblContacts = new JLabel("Contacts list");
 		
@@ -53,7 +61,6 @@ public class ClientUI
 		
 		final JList<String> lstClients = new JList<String>(lClients);
 		JScrollPane clntsListScroll = new JScrollPane(lstClients);
-		clntsListScroll.setSize(150, 400);
 		
 		final JButton refreshBtn = new JButton("REFRESH LIST");
 		
@@ -71,13 +78,12 @@ public class ClientUI
 		sendText.setLineWrap(true);
 		JScrollPane sendAreaScroll = new JScrollPane(sendText);
 		
-		final JTextArea rcvText = new JTextArea();
-		rcvText.setMargin(new Insets(10, 10, 10, 10));
-		rcvText.setLineWrap(true);
-		JScrollPane rcvAreaScroll = new JScrollPane(rcvText);
+		this.rcvText.setMargin(new Insets(10, 10, 10, 10));
+		this.rcvText.setLineWrap(true);
+		JScrollPane rcvAreaScroll = new JScrollPane(this.rcvText);
 		
 		// setting up the client's internal chat server
-		this.msgServer = new TextAreaImpl(rcvText);
+		this.msgServer = new MessageImpl();
 		Naming.rebind(this.clientUri, this.msgServer);
 		
 		/** =================== */
@@ -154,22 +160,23 @@ public class ClientUI
 		sendBtn.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent ae){
 				String msgText = sendText.getText() + "\n\n";
+				
+				Set<String> recipientsList = new HashSet<String>();
 				// when no recipient is selected
 				if (lstClients.isSelectionEmpty())
 				{
-					try {
-						broadcastMessage(msgText);
-					} catch (Exception e) {
-						e.printStackTrace();
+					ListModel list = lstClients.getModel();
+					for(int i = 0; i < list.getSize(); i++){
+						recipientsList.add((String) list.getElementAt(i));
 					}
 				} else {
-					// when one recipient is selected
-					String recipient = lstClients.getSelectedValue();
-					try {
-						sendMessage(recipient, msgText);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
+					recipientsList.add(lstClients.getSelectedValue());
+				}
+				
+				try {
+					sendMessage(null, recipientsList, msgText, null);
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
 				// clearing text from send text area after message is sent 
 				sendText.setText(null);
@@ -188,25 +195,30 @@ public class ClientUI
 		
 		// the listener detects when the received text area is modified
 		// interpreting it as an indicator of message being received
-		rcvText.getDocument().addDocumentListener(new DocumentListener(){
-			public void insertUpdate(DocumentEvent e) {
-				messageReceived();
-			}
-
-			@Override
-			public void changedUpdate(DocumentEvent e) {
-				messageReceived();
-			}
-
-			@Override
-			public void removeUpdate(DocumentEvent e) {
-				messageReceived();
-			}
+		this.msgServer.addPropertyChangeListener(new PropertyChangeListener()
+		{
+	    	@Override
+	    	public void propertyChange(PropertyChangeEvent event)
+	    	{
+	    	    if (event.getPropertyName().equals("messageReceived"))
+	    	    {
+	    	    	try
+	    	    	{
+	    	    		messageReceived();
+	    	    	} catch (Exception e) {
+	    	    		e.printStackTrace();
+	    	    	}
+	    	    }
+	    	}
 		});
 		
 		closeBtn.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent ae){
-				unsubscribe();
+				try {
+					unsubscribe();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 				frame.dispose();
 			}
 		});
@@ -231,41 +243,63 @@ public class ClientUI
 		}
 	}
 	
-	private void sendMessage(String recipient, String msgText) throws RemoteException, MalformedURLException, NotBoundException
+	private void sendMessage(String senderName, Set<String> recipientsList,
+			String msgText, String msgID) throws RemoteException, MalformedURLException, NotBoundException
 	{
-		Map<String, String> cList = this.clientsList.getList();
-		String rcpntUri = cList.get(recipient);
-		Message rcpntSrv = (Message)Naming.lookup(rcpntUri);
-		rcpntSrv.sendFrom(this.clientName, msgText);
-	}
-	
-	private void broadcastMessage(String msgText) throws RemoteException, MalformedURLException, NotBoundException
-	{
-		Map<String, String> cList = this.clientsList.getList();
-		for(String key : cList.keySet())
+		if (msgID == null)
 		{
-			String rcpntUri = cList.get(key);
+			msgID = this.clientName + "-" + String.valueOf(System.currentTimeMillis() / 1000L);
+		}
+		
+		if (senderName == null)
+		{
+			senderName = this.clientName;
+		}
+		
+		for(String recipient : recipientsList)
+		{
+			String rcpntUri = this.clientsList.getClientAddress(recipient);
 			Message rcpntSrv = (Message)Naming.lookup(rcpntUri);
-			rcpntSrv.sendFrom(this.clientName, msgText);
+			rcpntSrv.sendFrom(senderName, msgText, msgID, recipientsList);
 		}
 	}
 	
 	// method to re-broadcast a message received 
-	private void messageReceived()
+	private void messageReceived() throws RemoteException, MalformedURLException, NotBoundException
 	{
-		// do something with the text field
-		System.out.println("message received!");
+		// when the text is new
+		if (!this.rcvdMessages.contains(this.msgServer.getTextID()))
+		{
+			// clear the text area for the new message
+			this.rcvText.setText(null);
+			String rcvdMsgText = "[" + this.msgServer.getSender() + " says]:\n\n" +
+					this.msgServer.getMessageText();
+			
+			// print the text in the received msg area
+			this.rcvText.setText(rcvdMsgText);
+			
+			// add the msgID to the received list
+			this.rcvdMessages.add(this.msgServer.getTextID());
+			
+			// remove the client from the recipients list
+			Set<String> recipientsList = this.msgServer.getRecipients();
+			recipientsList.remove(this.clientName);
+			
+			// re-broadcast same copy of the message
+			sendMessage(this.msgServer.getSender(), recipientsList, this.msgServer.getMessageText(),
+					this.msgServer.getTextID());
+		} else {
+			// when the text was already received
+			this.rcvText.append("\n\nmessage" + this.msgServer.getTextID() +
+					" already received.");
+		}
 	}
 	
 	// method that fires when the client shuts down, removes itself from the registry
-	private void unsubscribe()
+	private void unsubscribe() throws RemoteException, MalformedURLException, NotBoundException
 	{
-		try {
-			this.clientsList.removeClient(this.clientName);
-			Naming.unbind(this.clientUri);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		this.clientsList.removeClient(this.clientName);
+		Naming.unbind(this.clientUri);
 	}
 	
 /*	public static void main(String[] args) throws Exception
