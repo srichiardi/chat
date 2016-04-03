@@ -243,7 +243,7 @@ public class ClientUI
 	private void sendMessage(String senderName, Set<String> recipientsList,
 			String msgText, String msgID) throws RemoteException, MalformedURLException, NotBoundException
 	{
-		if (msgID == null)
+		if (msgID == null) // null when the message is being sent for the first time
 		{
 			msgID = this.clientName + "-" + String.valueOf(System.currentTimeMillis() / 1000L);
 			this.rcvdMessages.add(this.msgServer.getTextID());
@@ -254,6 +254,7 @@ public class ClientUI
 			senderName = this.clientName;
 		}
 		
+		// the recipient list is emply when no specific recipient has been selected
 		if (recipientsList.isEmpty())
 		{
 			for (String key : this.clientsList.getList().keySet())
@@ -265,6 +266,7 @@ public class ClientUI
 			}
 		}
 		
+		// main for loop distributing the message to all clients in the recipient list
 		for(String recipient : recipientsList)
 		{
 			try {
@@ -287,7 +289,8 @@ public class ClientUI
 			// clear the text area for the new message
 			this.rcvText.setText(null);
 			String rcvdMsgText = "[" + this.msgServer.getSender() + " says]:\n\n" +
-					this.msgServer.getMessageText();
+					this.msgServer.getMessageText() + "\n\n" +
+					this.msgServer.getTextID();
 			
 			// print the text in the received msg area
 			this.rcvText.setText(rcvdMsgText);
