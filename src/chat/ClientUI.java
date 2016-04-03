@@ -33,12 +33,12 @@ public class ClientUI
 	private Set <String> rcvdMessages; // stores all msgIDs already received
 	private final JTextArea rcvText = new JTextArea();
 	
-	public ClientUI(String clientName) throws MalformedURLException, RemoteException, NotBoundException
+	public ClientUI(String clientName, String serverURI) throws MalformedURLException, RemoteException, NotBoundException
 	{
 		this.clientName = clientName;
 		this.clientUri = "rmi://localhost/" + clientName;
 		
-		this.clientsList = (RemoteList)Naming.lookup("rmi://localhost/listserver");
+		this.clientsList = (RemoteList)Naming.lookup(serverURI);
 		this.clientsList.setClient(clientName, this.clientUri);
 		this.rcvdMessages = new HashSet<String>();
 		
