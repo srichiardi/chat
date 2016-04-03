@@ -32,11 +32,13 @@ public class ClientUI
 	private Message msgServer;
 	private Set <String> rcvdMessages; // stores all msgIDs already received
 	private final JTextArea rcvText = new JTextArea();
+	private final DefaultListModel<String> lClients;
 	
 	public ClientUI(String clientName, String serverURI) throws MalformedURLException, RemoteException, NotBoundException
 	{
 		this.clientName = clientName;
 		this.clientUri = "rmi://localhost/" + clientName;
+		
 		// setting up the client's internal chat server
 		this.msgServer = new MessageImpl();
 		Naming.rebind(this.clientUri, this.msgServer);
@@ -60,7 +62,7 @@ public class ClientUI
 		content.add(panel1);
 		final JLabel lblContacts = new JLabel("Contacts list");
 		
-		final DefaultListModel<String> lClients = new DefaultListModel<String>();
+		lClients = new DefaultListModel<String>();
 		
 		final JList<String> lstClients = new JList<String>(lClients);
 		JScrollPane clntsListScroll = new JScrollPane(lstClients);
@@ -163,13 +165,8 @@ public class ClientUI
 				
 				Set<String> recipientsList = new HashSet<String>();
 				// when no recipient is selected
-				if (lstClients.isSelectionEmpty())
+				if (!lstClients.isSelectionEmpty())
 				{
-					ListModel list = lstClients.getModel();
-					for(int i = 0; i < list.getSize(); i++){
-						recipientsList.add((String) list.getElementAt(i));
-					}
-				} else {
 					recipientsList.add(lstClients.getSelectedValue());
 				}
 				
@@ -186,7 +183,7 @@ public class ClientUI
 		refreshBtn.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent ae){
 				try {
-					populateJList(lClients);
+					populateJList();
 				} catch (RemoteException e) {
 					e.printStackTrace();
 				}
@@ -230,15 +227,15 @@ public class ClientUI
 	}
 	
 	// automatically adds clients name to the contacts list at init
-	private void populateJList(DefaultListModel<String> cListModel) throws RemoteException
+	private void populateJList() throws RemoteException
 	{
 		Map<String, String> cList = this.clientsList.getList();
-		cListModel.clear();
+		this.lClients.clear();
 		for(String key : cList.keySet())
 		{
 			if (!key.equals(this.clientName))
 			{
-				cListModel.addElement(key);
+				this.lClients.addElement(key);
 			}
 		}
 	}
@@ -249,6 +246,7 @@ public class ClientUI
 		if (msgID == null)
 		{
 			msgID = this.clientName + "-" + String.valueOf(System.currentTimeMillis() / 1000L);
+			this.rcvdMessages.add(this.msgServer.getTextID());
 		}
 		
 		if (senderName == null)
@@ -256,11 +254,27 @@ public class ClientUI
 			senderName = this.clientName;
 		}
 		
+		if (recipientsList.isEmpty())
+		{
+			for (String key : this.clientsList.getList().keySet())
+			{
+				if (!key.equals(this.clientName))
+				{
+					recipientsList.add(key);
+				}
+			}
+		}
+		
 		for(String recipient : recipientsList)
 		{
-			String rcpntUri = this.clientsList.getClientAddress(recipient);
-			Message rcpntSrv = (Message)Naming.lookup(rcpntUri);
-			rcpntSrv.sendFrom(senderName, msgText, msgID, recipientsList);
+			try {
+				String rcpntUri = this.clientsList.getClientAddress(recipient);
+				Message rcpntSrv = (Message)Naming.lookup(rcpntUri);
+				rcpntSrv.sendFrom(senderName, msgText, msgID, recipientsList);
+			} catch (Exception e) {
+				populateJList();
+				continue;
+			}
 		}
 	}
 	
