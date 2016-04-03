@@ -37,6 +37,9 @@ public class ClientUI
 	{
 		this.clientName = clientName;
 		this.clientUri = "rmi://localhost/" + clientName;
+		// setting up the client's internal chat server
+		this.msgServer = new MessageImpl();
+		Naming.rebind(this.clientUri, this.msgServer);
 		
 		this.clientsList = (RemoteList)Naming.lookup(serverURI);
 		this.clientsList.setClient(clientName, this.clientUri);
@@ -81,10 +84,7 @@ public class ClientUI
 		this.rcvText.setMargin(new Insets(10, 10, 10, 10));
 		this.rcvText.setLineWrap(true);
 		JScrollPane rcvAreaScroll = new JScrollPane(this.rcvText);
-		
-		// setting up the client's internal chat server
-		this.msgServer = new MessageImpl();
-		Naming.rebind(this.clientUri, this.msgServer);
+
 		
 		/** =================== */
 		/** :::GUI LAYOUTS::::: */
